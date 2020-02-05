@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"gitlab.com/gitlab-org/gitlab-workhorse/internal/config"
 	"gitlab.com/gitlab-org/gitlab-workhorse/internal/filestore"
 	"gitlab.com/gitlab-org/gitlab-workhorse/internal/objectstore/test"
 )
@@ -166,8 +167,9 @@ func TestSaveFile(t *testing.T) {
 	defer os.RemoveAll(tmpFolder)
 
 	tests := []struct {
-		name   string
-		local  bool
+		name  string
+		local bool
+
 		remote remote
 	}{
 		{name: "Local only", local: true},
@@ -274,6 +276,32 @@ func TestSaveFile(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestSaveFileWithWorkhorseClient(t *testing.T) {
+	s3Config, sess, ts := test.SetupS3(t)
+	defer ts.Close()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	remoteObject := "tmp/test-file/1"
+	opts := filestore.SaveFileOpts{
+		RemoteID:           "test-file",
+		Deadline:           testDeadline(),
+		UseWorkhorseClient: true,
+		RemoteTempObjectID: remoteObject,
+		ObjectStorageConfig: config.ObjectStorageConfig{
+			Enabled:  true,
+			Provider: "AWS",
+			S3Config: s3Config,
+		},
+	}
+
+	_, err := filestore.SaveFileFromReader(ctx, strings.NewReader(test.ObjectContent), test.ObjectSize, &opts)
+	require.NoError(t, err)
+
+	test.S3ObjectExists(t, sess, s3Config, remoteObject, test.ObjectContent)
 }
 
 func TestSaveMultipartInBodyFailure(t *testing.T) {

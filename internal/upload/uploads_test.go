@@ -56,7 +56,7 @@ func TestUploadTempPathRequirement(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	HandleFileUploads(response, request, nilHandler, &api.Response{}, nil)
+	HandleFileUploads(response, request, nilHandler, &api.Response{}, nil, nil)
 	testhelper.AssertResponseCode(t, response, 500)
 }
 
@@ -91,7 +91,7 @@ func TestUploadHandlerForwardingRawData(t *testing.T) {
 	response := httptest.NewRecorder()
 
 	handler := newProxy(ts.URL)
-	HandleFileUploads(response, httpRequest, handler, &api.Response{TempPath: tempPath}, nil)
+	HandleFileUploads(response, httpRequest, handler, &api.Response{TempPath: tempPath}, nil, nil)
 	testhelper.AssertResponseCode(t, response, 202)
 	if response.Body.String() != "RESPONSE" {
 		t.Fatal("Expected RESPONSE in response body")
@@ -191,7 +191,7 @@ func TestUploadHandlerRewritingMultiPartData(t *testing.T) {
 	response := httptest.NewRecorder()
 
 	handler := newProxy(ts.URL)
-	HandleFileUploads(response, httpRequest, handler, &api.Response{TempPath: tempPath}, &testFormProcessor{})
+	HandleFileUploads(response, httpRequest, handler, &api.Response{TempPath: tempPath}, &testFormProcessor{}, nil)
 	testhelper.AssertResponseCode(t, response, 202)
 
 	cancel() // this will trigger an async cleanup
@@ -263,7 +263,7 @@ func TestUploadHandlerDetectingInjectedMultiPartData(t *testing.T) {
 			response := httptest.NewRecorder()
 
 			handler := newProxy(ts.URL)
-			HandleFileUploads(response, httpRequest, handler, &api.Response{TempPath: tempPath}, &testFormProcessor{})
+			HandleFileUploads(response, httpRequest, handler, &api.Response{TempPath: tempPath}, &testFormProcessor{}, nil)
 			testhelper.AssertResponseCode(t, response, test.response)
 
 			cancel() // this will trigger an async cleanup
@@ -292,7 +292,7 @@ func TestUploadProcessingField(t *testing.T) {
 	httpRequest.Header.Set("Content-Type", writer.FormDataContentType())
 
 	response := httptest.NewRecorder()
-	HandleFileUploads(response, httpRequest, nilHandler, &api.Response{TempPath: tempPath}, &testFormProcessor{})
+	HandleFileUploads(response, httpRequest, nilHandler, &api.Response{TempPath: tempPath}, &testFormProcessor{}, nil)
 	testhelper.AssertResponseCode(t, response, 500)
 }
 
@@ -347,7 +347,7 @@ func TestUploadProcessingFile(t *testing.T) {
 			httpRequest.Header.Set("Content-Type", writer.FormDataContentType())
 
 			response := httptest.NewRecorder()
-			HandleFileUploads(response, httpRequest, nilHandler, &test.preauth, &testFormProcessor{})
+			HandleFileUploads(response, httpRequest, nilHandler, &test.preauth, &testFormProcessor{}, nil)
 			testhelper.AssertResponseCode(t, response, 200)
 		})
 	}
@@ -390,7 +390,7 @@ func TestInvalidFileNames(t *testing.T) {
 		httpRequest.Header.Set("Content-Type", writer.FormDataContentType())
 
 		response := httptest.NewRecorder()
-		HandleFileUploads(response, httpRequest, nilHandler, &api.Response{TempPath: tempPath}, &SavedFileTracker{Request: httpRequest})
+		HandleFileUploads(response, httpRequest, nilHandler, &api.Response{TempPath: tempPath}, &SavedFileTracker{Request: httpRequest}, nil)
 		testhelper.AssertResponseCode(t, response, testCase.code)
 	}
 }
@@ -441,7 +441,7 @@ func TestUploadHandlerRemovingExif(t *testing.T) {
 	response := httptest.NewRecorder()
 
 	handler := newProxy(ts.URL)
-	HandleFileUploads(response, httpRequest, handler, &api.Response{TempPath: tempPath}, &testFormProcessor{})
+	HandleFileUploads(response, httpRequest, handler, &api.Response{TempPath: tempPath}, &testFormProcessor{}, nil)
 	testhelper.AssertResponseCode(t, response, 200)
 }
 
@@ -478,7 +478,7 @@ func TestUploadHandlerRemovingInvalidExif(t *testing.T) {
 	response := httptest.NewRecorder()
 
 	handler := newProxy(ts.URL)
-	HandleFileUploads(response, httpRequest, handler, &api.Response{TempPath: tempPath}, &testFormProcessor{})
+	HandleFileUploads(response, httpRequest, handler, &api.Response{TempPath: tempPath}, &testFormProcessor{}, nil)
 	testhelper.AssertResponseCode(t, response, 422)
 }
 

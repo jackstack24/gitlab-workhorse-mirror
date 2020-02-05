@@ -85,6 +85,10 @@ type RemoteObject struct {
 	CustomPutHeaders bool
 	// PutHeaders are HTTP headers (e.g. Content-Type) to be sent with StoreURL
 	PutHeaders map[string]string
+	// Whether to ignore Rails pre-signed URLs and have Workhorse directly access object storage provider
+	UseWorkhorseClient bool
+	// Remote, temporary object name where Rails will move to the final destination
+	RemoteTempObjectID string
 	// ID is a unique identifier of object storage upload
 	ID string
 	// Timeout is a number that represents timeout in seconds for sending data to StoreURL

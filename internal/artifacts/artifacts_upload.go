@@ -111,10 +111,10 @@ func (a *artifactsUploadProcessor) Name() string {
 	return "artifacts"
 }
 
-func UploadArtifacts(myAPI *api.API, h http.Handler) http.Handler {
+func UploadArtifacts(myAPI *api.API, h http.Handler, p filestore.UploadPreparer) http.Handler {
 	return myAPI.PreAuthorizeHandler(func(w http.ResponseWriter, r *http.Request, a *api.Response) {
 		mg := &artifactsUploadProcessor{opts: filestore.GetOpts(a), SavedFileTracker: upload.SavedFileTracker{Request: r}}
 
-		upload.HandleFileUploads(w, r, h, a, mg)
+		upload.HandleFileUploads(w, r, h, a, mg, p)
 	}, "/authorize")
 }

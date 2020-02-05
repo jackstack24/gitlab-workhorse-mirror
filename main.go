@@ -164,6 +164,7 @@ func main() {
 		}
 
 		cfg.Redis = cfgFromFile.Redis
+		cfg.ObjectStorages = cfgFromFile.ObjectStorages
 
 		if cfg.Redis != nil {
 			redis.Configure(cfg.Redis, redis.DefaultDialFunc)

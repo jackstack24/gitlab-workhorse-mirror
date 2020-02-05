@@ -14,6 +14,7 @@ import (
 	"gitlab.com/gitlab-org/gitlab-workhorse/internal/artifacts"
 	"gitlab.com/gitlab-org/gitlab-workhorse/internal/builds"
 	"gitlab.com/gitlab-org/gitlab-workhorse/internal/channel"
+	"gitlab.com/gitlab-org/gitlab-workhorse/internal/config"
 	"gitlab.com/gitlab-org/gitlab-workhorse/internal/filestore"
 	"gitlab.com/gitlab-org/gitlab-workhorse/internal/git"
 	"gitlab.com/gitlab-org/gitlab-workhorse/internal/helper"
@@ -41,6 +42,13 @@ type routeEntry struct {
 type routeOptions struct {
 	tracing  bool
 	matchers []matcherFunc
+}
+
+type uploadPreparers struct {
+	artifacts filestore.UploadPreparer
+	lfs       filestore.UploadPreparer
+	packages  filestore.UploadPreparer
+	uploads   filestore.UploadPreparer
 }
 
 const (
@@ -167,8 +175,9 @@ func (u *upstream) configureRoutes() {
 	signingTripper := secret.NewRoundTripper(u.RoundTripper, u.Version)
 	signingProxy := buildProxy(u.Backend, u.Version, signingTripper)
 
+	preparers := createUploadPreparers(u.Config)
 	uploadPath := path.Join(u.DocumentRoot, "uploads/tmp")
-	uploadAccelerateProxy := upload.Accelerate(&upload.SkipRailsAuthorizer{TempPath: uploadPath}, proxy)
+	uploadAccelerateProxy := upload.Accelerate(&upload.SkipRailsAuthorizer{TempPath: uploadPath}, proxy, preparers.uploads)
 	ciAPIProxyQueue := queueing.QueueRequests("ci_api_job_requests", uploadAccelerateProxy, u.APILimit, u.APIQueueLimit, u.APIQueueTimeout)
 	ciAPILongPolling := builds.RegisterHandler(ciAPIProxyQueue, redis.WatchKey, u.APICILongPollingDuration)
 
@@ -186,11 +195,11 @@ func (u *upstream) configureRoutes() {
 		route("GET", gitProjectPattern+`info/refs\z`, git.GetInfoRefsHandler(api)),
 		route("POST", gitProjectPattern+`git-upload-pack\z`, contentEncodingHandler(git.UploadPack(api)), withMatcher(isContentType("application/x-git-upload-pack-request"))),
 		route("POST", gitProjectPattern+`git-receive-pack\z`, contentEncodingHandler(git.ReceivePack(api)), withMatcher(isContentType("application/x-git-receive-pack-request"))),
-		route("PUT", gitProjectPattern+`gitlab-lfs/objects/([0-9a-f]{64})/([0-9]+)\z`, lfs.PutStore(api, signingProxy), withMatcher(isContentType("application/octet-stream"))),
+		route("PUT", gitProjectPattern+`gitlab-lfs/objects/([0-9a-f]{64})/([0-9]+)\z`, lfs.PutStore(api, signingProxy, preparers.lfs), withMatcher(isContentType("application/octet-stream"))),
 
 		// CI Artifacts
-		route("POST", apiPattern+`v4/jobs/[0-9]+/artifacts\z`, contentEncodingHandler(artifacts.UploadArtifacts(api, signingProxy))),
-		route("POST", ciAPIPattern+`v1/builds/[0-9]+/artifacts\z`, contentEncodingHandler(artifacts.UploadArtifacts(api, signingProxy))),
+		route("POST", apiPattern+`v4/jobs/[0-9]+/artifacts\z`, contentEncodingHandler(artifacts.UploadArtifacts(api, signingProxy, preparers.artifacts))),
+		route("POST", ciAPIPattern+`v1/builds/[0-9]+/artifacts\z`, contentEncodingHandler(artifacts.UploadArtifacts(api, signingProxy, preparers.artifacts))),
 
 		// ActionCable websocket
 		wsRoute(`^/-/cable\z`, cableProxy),
@@ -207,27 +216,27 @@ func (u *upstream) configureRoutes() {
 		route("", ciAPIPattern+`v1/builds/register.json\z`, ciAPILongPolling),
 
 		// Maven Artifact Repository
-		route("PUT", apiPattern+`v4/projects/[0-9]+/packages/maven/`, filestore.BodyUploader(api, signingProxy, nil)),
+		route("PUT", apiPattern+`v4/projects/[0-9]+/packages/maven/`, filestore.BodyUploader(api, signingProxy, preparers.packages)),
 
 		// Conan Artifact Repository
-		route("PUT", apiPattern+`v4/packages/conan/`, filestore.BodyUploader(api, signingProxy, nil)),
+		route("PUT", apiPattern+`v4/packages/conan/`, filestore.BodyUploader(api, signingProxy, preparers.packages)),
 
 		// NuGet Artifact Repository
-		route("PUT", apiPattern+`v4/projects/[0-9]+/packages/nuget/`, upload.Accelerate(api, signingProxy)),
+		route("PUT", apiPattern+`v4/projects/[0-9]+/packages/nuget/`, upload.Accelerate(api, signingProxy, preparers.packages)),
 
 		// PyPI Artifact Repository
-		route("POST", apiPattern+`v4/projects/[0-9]+/packages/pypi`, upload.Accelerate(api, signingProxy)),
+		route("POST", apiPattern+`v4/projects/[0-9]+/packages/pypi`, upload.Accelerate(api, signingProxy, preparers.packages)),
 
 		// We are porting API to disk acceleration
 		// we need to declare each routes until we have fixed all the routes on the rails codebase.
 		// Overall status can be seen at https://gitlab.com/groups/gitlab-org/-/epics/1802#current-status
 		route("POST", apiPattern+`v4/projects/[0-9]+/wikis/attachments\z`, uploadAccelerateProxy),
 		route("POST", apiPattern+`graphql\z`, uploadAccelerateProxy),
-		route("POST", apiPattern+`v4/groups/import`, upload.Accelerate(api, signingProxy)),
-		route("POST", apiPattern+`v4/projects/import`, upload.Accelerate(api, signingProxy)),
+		route("POST", apiPattern+`v4/groups/import`, upload.Accelerate(api, signingProxy, preparers.uploads)),
+		route("POST", apiPattern+`v4/projects/import`, upload.Accelerate(api, signingProxy, preparers.uploads)),
 
 		// Project Import via UI upload acceleration
-		route("POST", importPattern+`gitlab_project`, upload.Accelerate(api, signingProxy)),
+		route("POST", importPattern+`gitlab_project`, upload.Accelerate(api, signingProxy, preparers.uploads)),
 
 		// Explicitly proxy API requests
 		route("", apiPattern, proxy),
@@ -245,9 +254,9 @@ func (u *upstream) configureRoutes() {
 		),
 
 		// Uploads
-		route("POST", projectPattern+`uploads\z`, upload.Accelerate(api, signingProxy)),
-		route("POST", snippetUploadPattern, upload.Accelerate(api, signingProxy)),
-		route("POST", userUploadPattern, upload.Accelerate(api, signingProxy)),
+		route("POST", projectPattern+`uploads\z`, upload.Accelerate(api, signingProxy, preparers.uploads)),
+		route("POST", snippetUploadPattern, upload.Accelerate(api, signingProxy, preparers.uploads)),
+		route("POST", userUploadPattern, upload.Accelerate(api, signingProxy, preparers.uploads)),
 
 		// For legacy reasons, user uploads are stored under the document root.
 		// To prevent anybody who knows/guesses the URL of a user-uploaded file
@@ -265,6 +274,15 @@ func (u *upstream) configureRoutes() {
 		route("", "^/-/", defaultUpstream),
 
 		route("", "", defaultUpstream),
+	}
+}
+
+func createUploadPreparers(cfg config.Config) uploadPreparers {
+	return uploadPreparers{
+		artifacts: filestore.NewObjectStoragePreparer("artifacts", cfg),
+		lfs:       lfs.NewLfsUploadPreparer(cfg),
+		packages:  filestore.NewObjectStoragePreparer("packages", cfg),
+		uploads:   filestore.NewObjectStoragePreparer("uploads", cfg),
 	}
 }
 

@@ -9,6 +9,7 @@ import (
 	"net/http"
 
 	"gitlab.com/gitlab-org/gitlab-workhorse/internal/api"
+	"gitlab.com/gitlab-org/gitlab-workhorse/internal/config"
 	"gitlab.com/gitlab-org/gitlab-workhorse/internal/filestore"
 )
 
@@ -29,15 +30,28 @@ func (l *object) Verify(fh *filestore.FileHandler) error {
 	return nil
 }
 
-type uploadPreparer struct{}
+type uploadPreparer struct {
+	objectStorageConfig config.ObjectStorageConfig
+}
+
+func NewLfsUploadPreparer(c config.Config) filestore.UploadPreparer {
+	cfg, err := c.FindObjectStorageConfig("lfs")
+
+	if err != nil {
+		cfg = &config.ObjectStorageConfig{Enabled: false}
+	}
+
+	return &uploadPreparer{objectStorageConfig: *cfg}
+}
 
 func (l *uploadPreparer) Prepare(a *api.Response) (*filestore.SaveFileOpts, filestore.UploadVerifier, error) {
 	opts := filestore.GetOpts(a)
 	opts.TempFilePrefix = a.LfsOid
+	opts.ObjectStorageConfig = l.objectStorageConfig
 
 	return opts, &object{oid: a.LfsOid, size: a.LfsSize}, nil
 }
 
-func PutStore(a *api.API, h http.Handler) http.Handler {
-	return filestore.BodyUploader(a, h, &uploadPreparer{})
+func PutStore(a *api.API, h http.Handler, p filestore.UploadPreparer) http.Handler {
+	return filestore.BodyUploader(a, h, p)
 }
