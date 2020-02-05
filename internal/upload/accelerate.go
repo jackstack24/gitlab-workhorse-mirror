@@ -16,9 +16,9 @@ type MultipartClaims struct {
 	jwt.StandardClaims
 }
 
-func Accelerate(rails filestore.PreAuthorizer, h http.Handler) http.Handler {
+func Accelerate(rails filestore.PreAuthorizer, h http.Handler, p filestore.UploadPreparer) http.Handler {
 	return rails.PreAuthorizeHandler(func(w http.ResponseWriter, r *http.Request, a *api.Response) {
 		s := &SavedFileTracker{Request: r}
-		HandleFileUploads(w, r, h, a, s)
+		HandleFileUploads(w, r, h, a, s, p)
 	}, "/authorize")
 }

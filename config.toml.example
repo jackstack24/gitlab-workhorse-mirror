@@ -1,0 +1,52 @@
+[redis]
+URL = "unix:/home/git/gitlab/redis/redis.socket"
+
+[object_storage]
+
+[object_storage.artifacts]
+  enabled = true
+  provider = "AWS"
+
+[object_storage.artifacts.s3]
+  aws_access_key_id = "YOUR AWS ACCESS KEY"
+  aws_secret_access_key = "YOUR AWS SECRET ACCESS KEY"
+  bucket = "artifacts"
+  region = "us-east-1"
+  path_style = false # Optional
+  endpoint = 'http://127.0.0.1:9000' # Optional
+
+[object_storage.lfs]
+  enabled = true
+  provider = "AWS"
+
+[object_storage.lfs.s3]
+  aws_access_key_id = "YOUR AWS ACCESS KEY"
+  aws_secret_access_key = "YOUR AWS SECRET ACCESS KEY"
+  bucket = "lfs-objects"
+  region = "us-east-1"
+  path_style = false # Optional
+  endpoint = 'http://127.0.0.1:9000' # Optional
+
+[object_storage.packages]
+  enabled = true
+  provider = "AWS"
+
+[object_storage.packages.s3]
+  aws_access_key_id = "YOUR AWS ACCESS KEY"
+  aws_secret_access_key = "YOUR AWS SECRET ACCESS KEY"
+  bucket = "packages"
+  region = "us-east-1"
+  path_style = false # Optional
+  endpoint = 'http://127.0.0.1:9000' # Optional
+
+[object_storage.uploads]
+  enabled = true
+  provider = "AWS"
+
+[object_storage.uploads.s3]
+  aws_access_key_id = "YOUR AWS ACCESS KEY"
+  aws_secret_access_key = "YOUR AWS SECRET ACCESS KEY"
+  bucket = "uploads"
+  region = "us-east-1"
+  path_style = false # Optional
+  endpoint = 'http://127.0.0.1:9000' # Optional

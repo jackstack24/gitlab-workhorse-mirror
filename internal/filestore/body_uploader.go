@@ -28,9 +28,9 @@ type UploadPreparer interface {
 	Prepare(a *api.Response) (*SaveFileOpts, UploadVerifier, error)
 }
 
-type defaultPreparer struct{}
+type DefaultPreparer struct{}
 
-func (s *defaultPreparer) Prepare(a *api.Response) (*SaveFileOpts, UploadVerifier, error) {
+func (s *DefaultPreparer) Prepare(a *api.Response) (*SaveFileOpts, UploadVerifier, error) {
 	return GetOpts(a), nil, nil
 }
 
@@ -39,7 +39,7 @@ func (s *defaultPreparer) Prepare(a *api.Response) (*SaveFileOpts, UploadVerifie
 // Providing an UploadPreparer allows to customize the upload process
 func BodyUploader(rails PreAuthorizer, h http.Handler, p UploadPreparer) http.Handler {
 	if p == nil {
-		p = &defaultPreparer{}
+		p = &DefaultPreparer{}
 	}
 
 	return rails.PreAuthorizeHandler(func(w http.ResponseWriter, r *http.Request, a *api.Response) {

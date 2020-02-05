@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"gitlab.com/gitlab-org/gitlab-workhorse/internal/api"
+	"gitlab.com/gitlab-org/gitlab-workhorse/internal/config"
 )
 
 // DefaultObjectStoreTimeout is the timeout for ObjectStore upload operation
@@ -25,7 +26,12 @@ type SaveFileOpts struct {
 	PresignedDelete string
 	// HTTP headers to be sent along with PUT request
 	PutHeaders map[string]string
-
+	// Whether to ignore Rails pre-signed URLs and have Workhorse directly access object storage provider
+	UseWorkhorseClient bool
+	// If UseWorkhorseClient is true, this is the temporary object name to store the file
+	RemoteTempObjectID string
+	// Workhorse object storage client (e.g. S3) parameters
+	ObjectStorageConfig config.ObjectStorageConfig
 	// Deadline it the S3 operation deadline, the upload will be aborted if not completed in time
 	Deadline time.Time
 
@@ -38,6 +44,11 @@ type SaveFileOpts struct {
 	PresignedCompleteMultipart string
 	// PresignedAbortMultipart is a presigned URL for AbortMultipartUpload
 	PresignedAbortMultipart string
+}
+
+// UseWorkhorseClientEnabled checks if the options require direct access to object storage
+func (s *SaveFileOpts) UseWorkhorseClientEnabled() bool {
+	return s.UseWorkhorseClient && s.ObjectStorageConfig.IsValid() && s.RemoteTempObjectID != ""
 }
 
 // IsLocal checks if the options require the writing of the file on disk
@@ -63,13 +74,15 @@ func GetOpts(apiResponse *api.Response) *SaveFileOpts {
 	}
 
 	opts := SaveFileOpts{
-		LocalTempPath:   apiResponse.TempPath,
-		RemoteID:        apiResponse.RemoteObject.ID,
-		RemoteURL:       apiResponse.RemoteObject.GetURL,
-		PresignedPut:    apiResponse.RemoteObject.StoreURL,
-		PresignedDelete: apiResponse.RemoteObject.DeleteURL,
-		PutHeaders:      apiResponse.RemoteObject.PutHeaders,
-		Deadline:        time.Now().Add(timeout),
+		LocalTempPath:      apiResponse.TempPath,
+		RemoteID:           apiResponse.RemoteObject.ID,
+		RemoteURL:          apiResponse.RemoteObject.GetURL,
+		PresignedPut:       apiResponse.RemoteObject.StoreURL,
+		PresignedDelete:    apiResponse.RemoteObject.DeleteURL,
+		PutHeaders:         apiResponse.RemoteObject.PutHeaders,
+		UseWorkhorseClient: apiResponse.RemoteObject.UseWorkhorseClient,
+		RemoteTempObjectID: apiResponse.RemoteObject.RemoteTempObjectID,
+		Deadline:           time.Now().Add(timeout),
 	}
 
 	// Backwards compatibility to ensure API servers that do not include the

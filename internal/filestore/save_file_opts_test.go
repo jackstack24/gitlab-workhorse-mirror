@@ -5,8 +5,10 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"gitlab.com/gitlab-org/gitlab-workhorse/internal/api"
+	"gitlab.com/gitlab-org/gitlab-workhorse/internal/config"
 	"gitlab.com/gitlab-org/gitlab-workhorse/internal/filestore"
 )
 
@@ -165,4 +167,86 @@ func TestGetOptsDefaultTimeout(t *testing.T) {
 	opts := filestore.GetOpts(&api.Response{})
 
 	assert.WithinDuration(deadline, opts.Deadline, time.Minute)
+}
+
+func TestUseWorkhorseClientEnabled(t *testing.T) {
+	cfg := config.ObjectStorageConfig{
+		Enabled:  true,
+		Provider: "AWS",
+		S3Config: config.S3Config{
+			Bucket: "test-bucket",
+			Region: "test-region",
+		},
+	}
+
+	tests := []struct {
+		name                string
+		UseWorkhorseClient  bool
+		remoteTempObjectID  string
+		objectStorageConfig config.ObjectStorageConfig
+		expected            bool
+	}{
+		{
+			name:                "all direct access settings used",
+			UseWorkhorseClient:  true,
+			remoteTempObjectID:  "test-object",
+			objectStorageConfig: cfg,
+			expected:            true,
+		},
+		{
+			name:                "direct access disabled",
+			UseWorkhorseClient:  false,
+			remoteTempObjectID:  "test-object",
+			objectStorageConfig: cfg,
+			expected:            false,
+		},
+		{
+			name:                "missing remote temp object ID",
+			UseWorkhorseClient:  true,
+			remoteTempObjectID:  "",
+			objectStorageConfig: cfg,
+			expected:            false,
+		},
+		{
+			name:               "missing S3 config",
+			UseWorkhorseClient: true,
+			remoteTempObjectID: "test-object",
+			expected:           false,
+		},
+		{
+			name:               "missing S3 bucket",
+			UseWorkhorseClient: true,
+			remoteTempObjectID: "test-object",
+			objectStorageConfig: config.ObjectStorageConfig{
+				Enabled:  true,
+				Provider: "AWS",
+				S3Config: config.S3Config{},
+			},
+			expected: false,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+
+			apiResponse := &api.Response{
+				TempPath: "/tmp",
+				RemoteObject: api.RemoteObject{
+					Timeout:            10,
+					ID:                 "id",
+					UseWorkhorseClient: test.UseWorkhorseClient,
+					RemoteTempObjectID: test.remoteTempObjectID,
+				},
+			}
+			deadline := time.Now().Add(time.Duration(apiResponse.RemoteObject.Timeout) * time.Second)
+			opts := filestore.GetOpts(apiResponse)
+			opts.ObjectStorageConfig = test.objectStorageConfig
+
+			require.Equal(t, apiResponse.TempPath, opts.LocalTempPath)
+			require.WithinDuration(t, deadline, opts.Deadline, time.Second)
+			require.Equal(t, apiResponse.RemoteObject.ID, opts.RemoteID)
+			require.Equal(t, apiResponse.RemoteObject.UseWorkhorseClient, opts.UseWorkhorseClient)
+			require.Equal(t, test.expected, opts.UseWorkhorseClientEnabled())
+		})
+	}
 }
