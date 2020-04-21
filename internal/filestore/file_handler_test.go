@@ -11,11 +11,13 @@ import (
 	"testing"
 	"time"
 
+	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"gitlab.com/gitlab-org/gitlab-workhorse/internal/filestore"
 	"gitlab.com/gitlab-org/gitlab-workhorse/internal/objectstore/test"
+	"gitlab.com/gitlab-org/gitlab-workhorse/internal/testhelper"
 )
 
 func testDeadline() time.Time {
@@ -154,6 +156,8 @@ func TestSaveFileFromDiskToLocalPath(t *testing.T) {
 }
 
 func TestSaveFile(t *testing.T) {
+	testhelper.ConfigureSecret()
+
 	type remote int
 	const (
 		notRemote remote = iota
@@ -256,7 +260,7 @@ func TestSaveFile(t *testing.T) {
 			assertFileGetsRemovedAsync(t, fh.LocalPath)
 
 			// checking generated fields
-			fields := fh.GitLabFinalizeFields("file")
+			fields, err := fh.GitLabFinalizeFields("file")
 
 			assert.Equal(fh.Name, fields["file.name"])
 			assert.Equal(fh.LocalPath, fields["file.path"])
@@ -272,6 +276,9 @@ func TestSaveFile(t *testing.T) {
 			} else {
 				assert.Contains(fields, "file.etag")
 			}
+
+			_, jwtErr := jwt.Parse(fields["file.gitlab-workhorse-upload"], testhelper.ParseJWT)
+			require.NoError(t, jwtErr)
 		})
 	}
 }

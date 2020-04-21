@@ -15,6 +15,7 @@ import (
 
 	"gitlab.com/gitlab-org/gitlab-workhorse/internal/api"
 	"gitlab.com/gitlab-org/gitlab-workhorse/internal/filestore"
+	"gitlab.com/gitlab-org/gitlab-workhorse/internal/testhelper"
 )
 
 const (
@@ -23,6 +24,8 @@ const (
 )
 
 func TestBodyUploader(t *testing.T) {
+	testhelper.ConfigureSecret()
+
 	body := strings.NewReader(fileContent)
 
 	resp := testUpload(&rails{}, nil, echoProxy(t, fileLen), body)

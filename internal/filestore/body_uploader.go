@@ -63,7 +63,13 @@ func BodyUploader(rails PreAuthorizer, h http.Handler, p UploadPreparer) http.Ha
 		}
 
 		data := url.Values{}
-		for k, v := range fh.GitLabFinalizeFields("file") {
+		fields, err := fh.GitLabFinalizeFields("file")
+		if err != nil {
+			helper.Fail500(w, r, fmt.Errorf("BodyUploader: finalize fields failed: %v", err))
+			return
+		}
+
+		for k, v := range fields {
 			data.Set(k, v)
 		}
 

@@ -97,7 +97,12 @@ func (a *artifactsUploadProcessor) ProcessFile(ctx context.Context, formName str
 		}
 
 		if metadata != nil {
-			for k, v := range metadata.GitLabFinalizeFields("metadata") {
+			fields, err := metadata.GitLabFinalizeFields("metadata")
+			if err != nil {
+				return fmt.Errorf("Can't finalize field metadata: %v", err)
+			}
+
+			for k, v := range fields {
 				writer.WriteField(k, v)
 			}
 

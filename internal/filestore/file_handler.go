@@ -9,7 +9,9 @@ import (
 	"os"
 	"strconv"
 
+	jwt "github.com/dgrijalva/jwt-go"
 	"gitlab.com/gitlab-org/gitlab-workhorse/internal/objectstore"
+	"gitlab.com/gitlab-org/gitlab-workhorse/internal/secret"
 )
 
 type SizeError error
@@ -50,8 +52,9 @@ func (fh *FileHandler) MD5() string {
 }
 
 // GitLabFinalizeFields returns a map with all the fields GitLab Rails needs in order to finalize the upload.
-func (fh *FileHandler) GitLabFinalizeFields(prefix string) map[string]string {
+func (fh *FileHandler) GitLabFinalizeFields(prefix string) (map[string]string, error) {
 	data := make(map[string]string)
+	signedData := make(jwt.MapClaims)
 	key := func(field string) string {
 		if prefix == "" {
 			return field
@@ -60,16 +63,29 @@ func (fh *FileHandler) GitLabFinalizeFields(prefix string) map[string]string {
 		return fmt.Sprintf("%s.%s", prefix, field)
 	}
 
-	data[key("name")] = fh.Name
-	data[key("path")] = fh.LocalPath
-	data[key("remote_url")] = fh.RemoteURL
-	data[key("remote_id")] = fh.RemoteID
-	data[key("size")] = strconv.FormatInt(fh.Size, 10)
-	for hashName, hash := range fh.hashes {
-		data[key(hashName)] = hash
+	for k, v := range map[string]string{
+		"name":       fh.Name,
+		"path":       fh.LocalPath,
+		"remote_url": fh.RemoteURL,
+		"remote_id":  fh.RemoteID,
+		"size":       strconv.FormatInt(fh.Size, 10),
+	} {
+		data[key(k)] = v
+		signedData[k] = v
 	}
 
-	return data
+	for hashName, hash := range fh.hashes {
+		data[key(hashName)] = hash
+		signedData[hashName] = hash
+	}
+
+	jwtData, err := secret.JWTTokenString(signedData)
+	if err != nil {
+		return nil, err
+	}
+	data[key("gitlab-workhorse-upload")] = jwtData
+
+	return data, nil
 }
 
 // SaveFileFromReader persists the provided reader content to all the location specified in opts. A cleanup will be performed once ctx is Done
