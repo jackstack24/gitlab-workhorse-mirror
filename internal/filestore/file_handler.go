@@ -41,6 +41,12 @@ type FileHandler struct {
 	hashes map[string]string
 }
 
+// UploadClaims represents the JWT claim for upload parameters
+type UploadClaims struct {
+	Upload map[string]string `json:"upload"`
+	jwt.StandardClaims
+}
+
 // SHA256 hash of the handled file
 func (fh *FileHandler) SHA256() string {
 	return fh.hashes["sha256"]
@@ -54,7 +60,7 @@ func (fh *FileHandler) MD5() string {
 // GitLabFinalizeFields returns a map with all the fields GitLab Rails needs in order to finalize the upload.
 func (fh *FileHandler) GitLabFinalizeFields(prefix string) (map[string]string, error) {
 	data := make(map[string]string)
-	signedData := make(jwt.MapClaims)
+	signedData := make(map[string]string)
 	key := func(field string) string {
 		if prefix == "" {
 			return field
@@ -79,7 +85,8 @@ func (fh *FileHandler) GitLabFinalizeFields(prefix string) (map[string]string, e
 		signedData[hashName] = hash
 	}
 
-	jwtData, err := secret.JWTTokenString(signedData)
+	claims := UploadClaims{Upload: signedData, StandardClaims: secret.DefaultClaims}
+	jwtData, err := secret.JWTTokenString(claims)
 	if err != nil {
 		return nil, err
 	}
