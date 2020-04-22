@@ -116,6 +116,7 @@ func echoProxy(t *testing.T, expectedBodyLength int) http.Handler {
 
 		require.Contains(r.PostForm, "file.path")
 		require.Contains(r.PostForm, "file.size")
+		require.Contains(r.PostForm, "file.gitlab-workhorse-upload")
 		require.Equal(strconv.Itoa(expectedBodyLength), r.PostFormValue("file.size"))
 
 		jwtToken, err := jwt.Parse(r.Header.Get(RewrittenFieldsHeader), testhelper.ParseJWT)
@@ -125,6 +126,20 @@ func echoProxy(t *testing.T, expectedBodyLength int) http.Handler {
 		if len(rewrittenFields) != 1 || len(rewrittenFields["file"].(string)) == 0 {
 			t.Fatalf("Unexpected rewritten_fields value: %v", rewrittenFields)
 		}
+
+		encodedUploadFields, jwtErr := jwt.Parse(r.PostFormValue("file.gitlab-workhorse-upload"), testhelper.ParseJWT)
+		require.NoError(jwtErr, "Wrong signed upload fields")
+
+		uploadFields := encodedUploadFields.Claims.(jwt.MapClaims)["upload"].(map[string]interface{})
+		require.Contains(uploadFields, "name")
+		require.Contains(uploadFields, "path")
+		require.Contains(uploadFields, "remote_url")
+		require.Contains(uploadFields, "remote_id")
+		require.Contains(uploadFields, "size")
+		require.Contains(uploadFields, "md5")
+		require.Contains(uploadFields, "sha1")
+		require.Contains(uploadFields, "sha256")
+		require.Contains(uploadFields, "sha512")
 
 		path := r.PostFormValue("file.path")
 		uploaded, err := os.Open(path)

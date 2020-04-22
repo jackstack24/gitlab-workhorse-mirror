@@ -83,7 +83,7 @@ func uploadTestServer(t *testing.T, extraTests func(r *http.Request)) *httptest.
 		if err != nil {
 			t.Fatal(err)
 		}
-		nValues := 9 // file name, path, remote_url, remote_id, size, md5, sha1, sha256, sha512 for just the upload (no metadata because we are not POSTing a valid zip file)
+		nValues := 10 // file name, path, remote_url, remote_id, size, md5, sha1, sha256, sha512, gitlab-workhorse-upload for just the upload (no metadata because we are not POSTing a valid zip file)
 		if len(r.MultipartForm.Value) != nValues {
 			t.Errorf("Expected to receive exactly %d values", nValues)
 		}
@@ -142,6 +142,20 @@ func TestAcceleratedUpload(t *testing.T) {
 					if len(rewrittenFields) != 1 || len(rewrittenFields["file"].(string)) == 0 {
 						t.Fatalf("Unexpected rewritten_fields value: %v", rewrittenFields)
 					}
+
+					encodedUploadFields, jwtErr := jwt.Parse(r.PostFormValue("file.gitlab-workhorse-upload"), testhelper.ParseJWT)
+					require.NoError(t, jwtErr)
+
+					uploadFields := encodedUploadFields.Claims.(jwt.MapClaims)["upload"].(map[string]interface{})
+					require.Contains(t, uploadFields, "name")
+					require.Contains(t, uploadFields, "path")
+					require.Contains(t, uploadFields, "remote_url")
+					require.Contains(t, uploadFields, "remote_id")
+					require.Contains(t, uploadFields, "size")
+					require.Contains(t, uploadFields, "md5")
+					require.Contains(t, uploadFields, "sha1")
+					require.Contains(t, uploadFields, "sha256")
+					require.Contains(t, uploadFields, "sha512")
 				})
 
 			defer ts.Close()

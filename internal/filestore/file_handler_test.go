@@ -281,19 +281,19 @@ func TestSaveFile(t *testing.T) {
 			require.NoError(t, jwtErr)
 
 			uploadFields := encodedUploadFields.Claims.(jwt.MapClaims)["upload"].(map[string]interface{})
-			assert.Equal(fh.Name, uploadFields["file.name"])
-			assert.Equal(fh.LocalPath, uploadFields["file.path"])
-			assert.Equal(fh.RemoteURL, uploadFields["file.remote_url"])
-			assert.Equal(fh.RemoteID, uploadFields["file.remote_id"])
-			assert.Equal(strconv.FormatInt(test.ObjectSize, 10), uploadFields["file.size"])
-			assert.Equal(test.ObjectMD5, uploadFields["file.md5"])
-			assert.Equal(test.ObjectSHA1, uploadFields["file.sha1"])
-			assert.Equal(test.ObjectSHA256, uploadFields["file.sha256"])
-			assert.Equal(test.ObjectSHA512, uploadFields["file.sha512"])
+			assert.Equal(fh.Name, uploadFields["name"])
+			assert.Equal(fh.LocalPath, uploadFields["path"])
+			assert.Equal(fh.RemoteURL, uploadFields["remote_url"])
+			assert.Equal(fh.RemoteID, uploadFields["remote_id"])
+			assert.Equal(strconv.FormatInt(test.ObjectSize, 10), uploadFields["size"])
+			assert.Equal(test.ObjectMD5, uploadFields["md5"])
+			assert.Equal(test.ObjectSHA1, uploadFields["sha1"])
+			assert.Equal(test.ObjectSHA256, uploadFields["sha256"])
+			assert.Equal(test.ObjectSHA512, uploadFields["sha512"])
 			if spec.remote == notRemote {
-				assert.NotContains(uploadFields, "file.etag")
+				assert.NotContains(uploadFields, "etag")
 			} else {
-				assert.Contains(uploadFields, "file.etag")
+				assert.Contains(uploadFields, "etag")
 			}
 		})
 	}

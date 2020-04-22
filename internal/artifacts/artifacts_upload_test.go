@@ -143,6 +143,8 @@ func TestUploadHandlerAddingMetadata(t *testing.T) {
 
 			require.Contains(t, rewrittenFields, "file")
 			require.Contains(t, rewrittenFields, "metadata")
+			require.Contains(t, r.PostForm, "file.gitlab-workhorse-upload")
+			require.Contains(t, r.PostForm, "metadata.gitlab-workhorse-upload")
 		},
 	)
 	defer ts.Close()
