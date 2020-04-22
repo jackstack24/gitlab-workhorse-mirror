@@ -261,6 +261,7 @@ func TestSaveFile(t *testing.T) {
 
 			// checking generated fields
 			fields, err := fh.GitLabFinalizeFields("file")
+			require.NoError(t, err)
 
 			assert.Equal(fh.Name, fields["file.name"])
 			assert.Equal(fh.LocalPath, fields["file.path"])
