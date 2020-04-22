@@ -32,7 +32,7 @@ func (l *object) Verify(fh *filestore.FileHandler) error {
 
 type uploadPreparer struct{}
 
-func (l *uploadPreparer) Prepare(a *api.Response) (*filestore.SaveFileOpts, upload.UploadVerifier, error) {
+func (l *uploadPreparer) Prepare(a *api.Response) (*filestore.SaveFileOpts, upload.Verifier, error) {
 	opts := filestore.GetOpts(a)
 	opts.TempFilePrefix = a.LfsOid
 

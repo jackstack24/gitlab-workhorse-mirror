@@ -82,7 +82,7 @@ func TestBodyUploaderErrors(t *testing.T) {
 	}
 }
 
-func testNoProxyInvocation(t *testing.T, expectedStatus int, auth PreAuthorizer, preparer UploadPreparer) {
+func testNoProxyInvocation(t *testing.T, expectedStatus int, auth PreAuthorizer, preparer Preparer) {
 	proxy := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Fail(t, "request proxied upstream")
 	})
@@ -91,7 +91,7 @@ func testNoProxyInvocation(t *testing.T, expectedStatus int, auth PreAuthorizer,
 	require.Equal(t, expectedStatus, resp.StatusCode)
 }
 
-func testUpload(auth PreAuthorizer, preparer UploadPreparer, proxy http.Handler, body io.Reader) *http.Response {
+func testUpload(auth PreAuthorizer, preparer Preparer, proxy http.Handler, body io.Reader) *http.Response {
 	req := httptest.NewRequest("POST", "http://example.com/upload", body)
 	w := httptest.NewRecorder()
 
@@ -167,11 +167,11 @@ func (r *rails) PreAuthorizeHandler(next api.HandleFunc, _ string) http.Handler 
 }
 
 type alwaysLocalPreparer struct {
-	verifier     UploadVerifier
+	verifier     Verifier
 	prepareError error
 }
 
-func (a *alwaysLocalPreparer) Prepare(_ *api.Response) (*filestore.SaveFileOpts, UploadVerifier, error) {
+func (a *alwaysLocalPreparer) Prepare(_ *api.Response) (*filestore.SaveFileOpts, Verifier, error) {
 	return filestore.GetOpts(&api.Response{TempPath: os.TempDir()}), a.verifier, a.prepareError
 }
 

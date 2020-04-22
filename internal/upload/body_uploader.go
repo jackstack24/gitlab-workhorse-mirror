@@ -16,29 +16,29 @@ type PreAuthorizer interface {
 	PreAuthorizeHandler(next api.HandleFunc, suffix string) http.Handler
 }
 
-// UploadVerifier allows to check an upload before sending it to rails
-type UploadVerifier interface {
+// Verifier allows to check an upload before sending it to rails
+type Verifier interface {
 	// Verify can abort the upload returning an error
 	Verify(handler *filestore.FileHandler) error
 }
 
-// UploadPreparer allows to customize BodyUploader configuration
-type UploadPreparer interface {
-	// Prepare converts api.Response into a *SaveFileOpts, it can optionally return an UploadVerifier that will be
+// Preparer allows to customize BodyUploader configuration
+type Preparer interface {
+	// Prepare converts api.Response into a *SaveFileOpts, it can optionally return an Verifier that will be
 	// invoked after the real upload, before the finalization with rails
-	Prepare(a *api.Response) (*filestore.SaveFileOpts, UploadVerifier, error)
+	Prepare(a *api.Response) (*filestore.SaveFileOpts, Verifier, error)
 }
 
 type defaultPreparer struct{}
 
-func (s *defaultPreparer) Prepare(a *api.Response) (*filestore.SaveFileOpts, UploadVerifier, error) {
+func (s *defaultPreparer) Prepare(a *api.Response) (*filestore.SaveFileOpts, Verifier, error) {
 	return filestore.GetOpts(a), nil, nil
 }
 
 // BodyUploader is an http.Handler that perform a pre authorization call to rails before hijacking the request body and
 // uploading it.
-// Providing an UploadPreparer allows to customize the upload process
-func BodyUploader(rails PreAuthorizer, h http.Handler, p UploadPreparer) http.Handler {
+// Providing an Preparer allows to customize the upload process
+func BodyUploader(rails PreAuthorizer, h http.Handler, p Preparer) http.Handler {
 	if p == nil {
 		p = &defaultPreparer{}
 	}
