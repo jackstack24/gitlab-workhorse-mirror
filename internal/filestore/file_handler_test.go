@@ -277,8 +277,24 @@ func TestSaveFile(t *testing.T) {
 				assert.Contains(fields, "file.etag")
 			}
 
-			_, jwtErr := jwt.Parse(fields["file.gitlab-workhorse-upload"], testhelper.ParseJWT)
+			encodedUploadFields, jwtErr := jwt.Parse(fields["file.gitlab-workhorse-upload"], testhelper.ParseJWT)
 			require.NoError(t, jwtErr)
+
+			uploadFields := encodedUploadFields.Claims.(jwt.MapClaims)["upload"].(map[string]interface{})
+			assert.Equal(fh.Name, uploadFields["file.name"])
+			assert.Equal(fh.LocalPath, uploadFields["file.path"])
+			assert.Equal(fh.RemoteURL, uploadFields["file.remote_url"])
+			assert.Equal(fh.RemoteID, uploadFields["file.remote_id"])
+			assert.Equal(strconv.FormatInt(test.ObjectSize, 10), uploadFields["file.size"])
+			assert.Equal(test.ObjectMD5, uploadFields["file.md5"])
+			assert.Equal(test.ObjectSHA1, uploadFields["file.sha1"])
+			assert.Equal(test.ObjectSHA256, uploadFields["file.sha256"])
+			assert.Equal(test.ObjectSHA512, uploadFields["file.sha512"])
+			if spec.remote == notRemote {
+				assert.NotContains(uploadFields, "file.etag")
+			} else {
+				assert.Contains(uploadFields, "file.etag")
+			}
 		})
 	}
 }
