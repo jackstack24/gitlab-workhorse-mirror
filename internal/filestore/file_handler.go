@@ -10,6 +10,7 @@ import (
 	"strconv"
 
 	jwt "github.com/dgrijalva/jwt-go"
+
 	"gitlab.com/gitlab-org/gitlab-workhorse/internal/objectstore"
 	"gitlab.com/gitlab-org/gitlab-workhorse/internal/secret"
 )
