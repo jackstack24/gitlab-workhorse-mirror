@@ -3,7 +3,7 @@ package upload
 import (
 	"net/http"
 
-	jwt "github.com/dgrijalva/jwt-go"
+	"github.com/dgrijalva/jwt-go"
 
 	"gitlab.com/gitlab-org/gitlab-workhorse/internal/api"
 )

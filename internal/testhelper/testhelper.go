@@ -15,7 +15,7 @@ import (
 	"strings"
 	"testing"
 
-	jwt "github.com/dgrijalva/jwt-go"
+	"github.com/dgrijalva/jwt-go"
 
 	"gitlab.com/gitlab-org/labkit/log"
 
