@@ -19,6 +19,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"gitlab.com/gitlab-org/gitlab-workhorse/internal/api"
+	"gitlab.com/gitlab-org/gitlab-workhorse/internal/filestore"
 	"gitlab.com/gitlab-org/gitlab-workhorse/internal/secret"
 	"gitlab.com/gitlab-org/gitlab-workhorse/internal/testhelper"
 	"gitlab.com/gitlab-org/gitlab-workhorse/internal/upload"
@@ -135,18 +136,18 @@ func TestAcceleratedUpload(t *testing.T) {
 						expectSignedRequest(t, r)
 					}
 
-					jwtToken, err := jwt.Parse(r.Header.Get(upload.RewrittenFieldsHeader), testhelper.ParseJWT)
+					token, err := jwt.ParseWithClaims(r.Header.Get(upload.RewrittenFieldsHeader), &upload.MultipartClaims{}, testhelper.ParseJWT)
 					require.NoError(t, err)
 
-					rewrittenFields := jwtToken.Claims.(jwt.MapClaims)["rewritten_fields"].(map[string]interface{})
-					if len(rewrittenFields) != 1 || len(rewrittenFields["file"].(string)) == 0 {
+					rewrittenFields := token.Claims.(*upload.MultipartClaims).RewrittenFields
+					if len(rewrittenFields) != 1 || len(rewrittenFields["file"]) == 0 {
 						t.Fatalf("Unexpected rewritten_fields value: %v", rewrittenFields)
 					}
 
-					encodedUploadFields, jwtErr := jwt.Parse(r.PostFormValue("file.gitlab-workhorse-upload"), testhelper.ParseJWT)
+					token, jwtErr := jwt.ParseWithClaims(r.PostFormValue("file.gitlab-workhorse-upload"), &filestore.UploadClaims{}, testhelper.ParseJWT)
 					require.NoError(t, jwtErr)
 
-					uploadFields := encodedUploadFields.Claims.(jwt.MapClaims)["upload"].(map[string]interface{})
+					uploadFields := token.Claims.(*filestore.UploadClaims).Upload
 					require.Contains(t, uploadFields, "name")
 					require.Contains(t, uploadFields, "path")
 					require.Contains(t, uploadFields, "remote_url")

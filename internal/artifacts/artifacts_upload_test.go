@@ -135,10 +135,10 @@ func TestUploadHandlerAddingMetadata(t *testing.T) {
 
 	ts := testArtifactsUploadServer(t, api.Response{TempPath: tempPath},
 		func(w http.ResponseWriter, r *http.Request) {
-			jwtToken, err := jwt.Parse(r.Header.Get(upload.RewrittenFieldsHeader), testhelper.ParseJWT)
+			token, err := jwt.ParseWithClaims(r.Header.Get(upload.RewrittenFieldsHeader), &upload.MultipartClaims{}, testhelper.ParseJWT)
 			require.NoError(t, err)
 
-			rewrittenFields := jwtToken.Claims.(jwt.MapClaims)["rewritten_fields"].(map[string]interface{})
+			rewrittenFields := token.Claims.(*upload.MultipartClaims).RewrittenFields
 			require.Equal(t, 2, len(rewrittenFields))
 
 			require.Contains(t, rewrittenFields, "file")

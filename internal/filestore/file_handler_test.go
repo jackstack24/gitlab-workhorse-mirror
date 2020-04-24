@@ -231,8 +231,8 @@ func TestSaveFile(t *testing.T) {
 			assert.NoError(err)
 			require.NotNil(t, fh)
 
-			assert.Equal(opts.RemoteID, fh.RemoteID)
-			assert.Equal(opts.RemoteURL, fh.RemoteURL)
+			require.Equal(t, opts.RemoteID, fh.RemoteID)
+			require.Equal(t, opts.RemoteURL, fh.RemoteURL)
 
 			if spec.local {
 				assert.NotEmpty(fh.LocalPath, "File not persisted on disk")
@@ -240,7 +240,7 @@ func TestSaveFile(t *testing.T) {
 				assert.NoError(err)
 
 				dir := path.Dir(fh.LocalPath)
-				assert.Equal(opts.LocalTempPath, dir)
+				require.Equal(t, opts.LocalTempPath, dir)
 				filename := path.Base(fh.LocalPath)
 				beginsWithPrefix := strings.HasPrefix(filename, opts.TempFilePrefix)
 				assert.True(beginsWithPrefix, fmt.Sprintf("LocalPath filename %q do not begin with TempFilePrefix %q", filename, opts.TempFilePrefix))
@@ -248,12 +248,12 @@ func TestSaveFile(t *testing.T) {
 				assert.Empty(fh.LocalPath, "LocalPath must be empty for non local uploads")
 			}
 
-			assert.Equal(test.ObjectSize, fh.Size)
-			assert.Equal(test.ObjectMD5, fh.MD5())
-			assert.Equal(test.ObjectSHA256, fh.SHA256())
+			require.Equal(t, test.ObjectSize, fh.Size)
+			require.Equal(t, test.ObjectMD5, fh.MD5())
+			require.Equal(t, test.ObjectSHA256, fh.SHA256())
 
-			assert.Equal(expectedPuts, osStub.PutsCnt(), "ObjectStore PutObject count mismatch")
-			assert.Equal(0, osStub.DeletesCnt(), "File deleted too early")
+			require.Equal(t, expectedPuts, osStub.PutsCnt(), "ObjectStore PutObject count mismatch")
+			require.Equal(t, 0, osStub.DeletesCnt(), "File deleted too early")
 
 			cancel() // this will trigger an async cleanup
 			assertObjectStoreDeletedAsync(t, expectedDeletes, osStub)
@@ -263,39 +263,14 @@ func TestSaveFile(t *testing.T) {
 			fields, err := fh.GitLabFinalizeFields("file")
 			require.NoError(t, err)
 
-			assert.Equal(fh.Name, fields["file.name"])
-			assert.Equal(fh.LocalPath, fields["file.path"])
-			assert.Equal(fh.RemoteURL, fields["file.remote_url"])
-			assert.Equal(fh.RemoteID, fields["file.remote_id"])
-			assert.Equal(strconv.FormatInt(test.ObjectSize, 10), fields["file.size"])
-			assert.Equal(test.ObjectMD5, fields["file.md5"])
-			assert.Equal(test.ObjectSHA1, fields["file.sha1"])
-			assert.Equal(test.ObjectSHA256, fields["file.sha256"])
-			assert.Equal(test.ObjectSHA512, fields["file.sha512"])
-			if spec.remote == notRemote {
-				assert.NotContains(fields, "file.etag")
-			} else {
-				assert.Contains(fields, "file.etag")
-			}
+			checkFileHandlerWithFields(t, fh, fields, "file", spec.remote == notRemote)
 
-			encodedUploadFields, jwtErr := jwt.Parse(fields["file.gitlab-workhorse-upload"], testhelper.ParseJWT)
+			token, jwtErr := jwt.ParseWithClaims(fields["file.gitlab-workhorse-upload"], &filestore.UploadClaims{}, testhelper.ParseJWT)
 			require.NoError(t, jwtErr)
 
-			uploadFields := encodedUploadFields.Claims.(jwt.MapClaims)["upload"].(map[string]interface{})
-			assert.Equal(fh.Name, uploadFields["name"])
-			assert.Equal(fh.LocalPath, uploadFields["path"])
-			assert.Equal(fh.RemoteURL, uploadFields["remote_url"])
-			assert.Equal(fh.RemoteID, uploadFields["remote_id"])
-			assert.Equal(strconv.FormatInt(test.ObjectSize, 10), uploadFields["size"])
-			assert.Equal(test.ObjectMD5, uploadFields["md5"])
-			assert.Equal(test.ObjectSHA1, uploadFields["sha1"])
-			assert.Equal(test.ObjectSHA256, uploadFields["sha256"])
-			assert.Equal(test.ObjectSHA512, uploadFields["sha512"])
-			if spec.remote == notRemote {
-				assert.NotContains(uploadFields, "etag")
-			} else {
-				assert.Contains(uploadFields, "etag")
-			}
+			uploadFields := token.Claims.(*filestore.UploadClaims).Upload
+
+			checkFileHandlerWithFields(t, fh, uploadFields, "", spec.remote == notRemote)
 		})
 	}
 }
@@ -328,4 +303,29 @@ func TestSaveMultipartInBodyFailure(t *testing.T) {
 	assert.Nil(fh)
 	require.Error(t, err)
 	assert.EqualError(err, test.MultipartUploadInternalError().Error())
+}
+
+func checkFileHandlerWithFields(t *testing.T, fh *filestore.FileHandler, fields map[string]string, prefix string, remote bool) {
+	key := func(field string) string {
+		if prefix == "" {
+			return field
+		}
+
+		return fmt.Sprintf("%s.%s", prefix, field)
+	}
+
+	require.Equal(t, fh.Name, fields[key("name")])
+	require.Equal(t, fh.LocalPath, fields[key("path")])
+	require.Equal(t, fh.RemoteURL, fields[key("remote_url")])
+	require.Equal(t, fh.RemoteID, fields[key("remote_id")])
+	require.Equal(t, strconv.FormatInt(test.ObjectSize, 10), fields[key("size")])
+	require.Equal(t, test.ObjectMD5, fields[key("md5")])
+	require.Equal(t, test.ObjectSHA1, fields[key("sha1")])
+	require.Equal(t, test.ObjectSHA256, fields[key("sha256")])
+	require.Equal(t, test.ObjectSHA512, fields[key("sha512")])
+	if remote {
+		require.NotContains(t, fields, key("etag"))
+	} else {
+		require.Contains(t, fields, key("etag"))
+	}
 }

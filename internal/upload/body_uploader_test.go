@@ -119,18 +119,18 @@ func echoProxy(t *testing.T, expectedBodyLength int) http.Handler {
 		require.Contains(r.PostForm, "file.gitlab-workhorse-upload")
 		require.Equal(strconv.Itoa(expectedBodyLength), r.PostFormValue("file.size"))
 
-		jwtToken, err := jwt.Parse(r.Header.Get(RewrittenFieldsHeader), testhelper.ParseJWT)
+		token, err := jwt.ParseWithClaims(r.Header.Get(RewrittenFieldsHeader), &MultipartClaims{}, testhelper.ParseJWT)
 		require.NoError(err, "Wrong JWT header")
 
-		rewrittenFields := jwtToken.Claims.(jwt.MapClaims)["rewritten_fields"].(map[string]interface{})
-		if len(rewrittenFields) != 1 || len(rewrittenFields["file"].(string)) == 0 {
+		rewrittenFields := token.Claims.(*MultipartClaims).RewrittenFields
+		if len(rewrittenFields) != 1 || len(rewrittenFields["file"]) == 0 {
 			t.Fatalf("Unexpected rewritten_fields value: %v", rewrittenFields)
 		}
 
-		encodedUploadFields, jwtErr := jwt.Parse(r.PostFormValue("file.gitlab-workhorse-upload"), testhelper.ParseJWT)
+		token, jwtErr := jwt.ParseWithClaims(r.PostFormValue("file.gitlab-workhorse-upload"), &filestore.UploadClaims{}, testhelper.ParseJWT)
 		require.NoError(jwtErr, "Wrong signed upload fields")
 
-		uploadFields := encodedUploadFields.Claims.(jwt.MapClaims)["upload"].(map[string]interface{})
+		uploadFields := token.Claims.(*filestore.UploadClaims).Upload
 		require.Contains(uploadFields, "name")
 		require.Contains(uploadFields, "path")
 		require.Contains(uploadFields, "remote_url")
