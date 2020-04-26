@@ -6,22 +6,22 @@ import (
 )
 
 type ObjectStoragePreparer struct {
-	objectStorageConfig config.ObjectStorageConfig
+	credentials config.ObjectStorageCredentials
 }
 
-func NewObjectStoragePreparer(name string, c config.Config) UploadPreparer {
-	cfg, err := c.FindObjectStorageConfig(name)
+func NewObjectStoragePreparer(c config.Config) UploadPreparer {
+	creds := c.ObjectStorageCredentials
 
-	if err != nil {
-		cfg = &config.ObjectStorageConfig{Enabled: false}
+	if creds == nil {
+		creds = &config.ObjectStorageCredentials{}
 	}
 
-	return &ObjectStoragePreparer{objectStorageConfig: *cfg}
+	return &ObjectStoragePreparer{credentials: *creds}
 }
 
 func (p *ObjectStoragePreparer) Prepare(a *api.Response) (*SaveFileOpts, UploadVerifier, error) {
 	opts := GetOpts(a)
-	opts.ObjectStorageConfig = p.objectStorageConfig
+	opts.ObjectStorageConfig.S3Credentials = p.credentials.S3Credentials
 
 	return opts, nil, nil
 }

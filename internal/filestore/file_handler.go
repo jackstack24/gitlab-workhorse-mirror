@@ -91,8 +91,8 @@ func SaveFileFromReader(ctx context.Context, reader io.Reader, size int64, opts 
 		}
 	}()
 
-	if opts.UseWorkhorseClientEnabled() && opts.ObjectStorageConfig.IsAWS() {
-		remoteWriter, err = objectstore.NewS3Object(ctx, opts.RemoteTempObjectID, opts.ObjectStorageConfig.S3Config, opts.Deadline)
+	if opts.UseWorkhorseClientEnabled() && opts.ObjectStorageConfig.IsAWS() && opts.ObjectStorageConfig.IsValid() {
+		remoteWriter, err = objectstore.NewS3Object(ctx, opts.RemoteTempObjectID, opts.ObjectStorageConfig.S3Credentials, opts.ObjectStorageConfig.S3Config, opts.Deadline)
 		writers = append(writers, remoteWriter)
 	} else if opts.IsMultipart() {
 		remoteWriter, err = objectstore.NewMultipart(ctx, opts.PresignedParts, opts.PresignedCompleteMultipart, opts.PresignedAbortMultipart, opts.PresignedDelete, opts.PutHeaders, opts.Deadline, opts.PartSize)

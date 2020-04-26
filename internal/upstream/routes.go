@@ -278,11 +278,13 @@ func (u *upstream) configureRoutes() {
 }
 
 func createUploadPreparers(cfg config.Config) uploadPreparers {
+	defaultPreparer := filestore.NewObjectStoragePreparer(cfg)
+
 	return uploadPreparers{
-		artifacts: filestore.NewObjectStoragePreparer("artifacts", cfg),
+		artifacts: defaultPreparer,
 		lfs:       lfs.NewLfsUploadPreparer(cfg),
-		packages:  filestore.NewObjectStoragePreparer("packages", cfg),
-		uploads:   filestore.NewObjectStoragePreparer("uploads", cfg),
+		packages:  defaultPreparer,
+		uploads:   defaultPreparer,
 	}
 }
 

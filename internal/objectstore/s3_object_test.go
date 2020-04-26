@@ -18,7 +18,7 @@ import (
 )
 
 func TestS3ObjectUpload(t *testing.T) {
-	config, sess, ts := test.SetupS3(t)
+	creds, config, sess, ts := test.SetupS3(t)
 	defer ts.Close()
 
 	deadline := time.Now().Add(testTimeout)
@@ -29,7 +29,7 @@ func TestS3ObjectUpload(t *testing.T) {
 	objectName := filepath.Join(tmpDir, "s3-test-data")
 	ctx, cancel := context.WithCancel(context.Background())
 
-	object, err := objectstore.NewS3Object(ctx, objectName, config, deadline)
+	object, err := objectstore.NewS3Object(ctx, objectName, creds, config, deadline)
 	require.NoError(t, err)
 
 	// copy data
@@ -59,7 +59,7 @@ func TestS3ObjectUpload(t *testing.T) {
 }
 
 func TestS3ObjectUploadCancel(t *testing.T) {
-	config, _, ts := test.SetupS3(t)
+	creds, config, _, ts := test.SetupS3(t)
 	defer ts.Close()
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -71,7 +71,7 @@ func TestS3ObjectUploadCancel(t *testing.T) {
 
 	objectName := filepath.Join(tmpDir, "s3-test-data")
 
-	object, err := objectstore.NewS3Object(ctx, objectName, config, deadline)
+	object, err := objectstore.NewS3Object(ctx, objectName, creds, config, deadline)
 
 	require.NoError(t, err)
 

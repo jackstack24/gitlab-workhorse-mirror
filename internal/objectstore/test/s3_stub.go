@@ -21,25 +21,27 @@ import (
 	"github.com/johannesboyne/gofakes3/backend/s3mem"
 )
 
-func SetupS3(t *testing.T) (config.S3Config, *session.Session, *httptest.Server) {
+func SetupS3(t *testing.T) (config.S3Credentials, config.S3Config, *session.Session, *httptest.Server) {
 	backend := s3mem.New()
 	faker := gofakes3.New(backend)
 	ts := httptest.NewServer(faker.Server())
 
 	bucket := "test-bucket"
 
-	config := config.S3Config{
+	creds := config.S3Credentials{
 		AwsAccessKeyID:     "YOUR-ACCESSKEYID",
 		AwsSecretAccessKey: "YOUR-SECRETACCESSKEY",
-		Bucket:             bucket,
-		Endpoint:           ts.URL,
-		Region:             "eu-central-1",
-		PathStyle:          true,
 	}
+
+	config := config.S3Config{
+		Bucket:    bucket,
+		Endpoint:  ts.URL,
+		Region:    "eu-central-1",
+		PathStyle: true}
 
 	// verify file made it
 	sess, err := session.NewSession(&aws.Config{
-		Credentials:      credentials.NewStaticCredentials(config.AwsAccessKeyID, config.AwsSecretAccessKey, ""),
+		Credentials:      credentials.NewStaticCredentials(creds.AwsAccessKeyID, creds.AwsSecretAccessKey, ""),
 		Endpoint:         aws.String(ts.URL),
 		Region:           aws.String(config.Region),
 		DisableSSL:       aws.Bool(true),
@@ -55,7 +57,7 @@ func SetupS3(t *testing.T) (config.S3Config, *session.Session, *httptest.Server)
 	})
 	require.NoError(t, err)
 
-	return config, sess, ts
+	return creds, config, sess, ts
 }
 
 // S3ObjectExists will fail the test if the file does not exist.

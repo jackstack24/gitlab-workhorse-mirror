@@ -18,20 +18,22 @@ import (
 )
 
 type S3Object struct {
-	session    *session.Session
-	s3Config   config.S3Config
-	objectName string
+	session     *session.Session
+	credentials config.S3Credentials
+	config      config.S3Config
+	objectName  string
 	uploader
 }
 
-func NewS3Object(ctx context.Context, objectName string, s3Config config.S3Config, deadline time.Time) (*S3Object, error) {
+func NewS3Object(ctx context.Context, objectName string, s3Credentials config.S3Credentials, s3Config config.S3Config, deadline time.Time) (*S3Object, error) {
 	pr, pw := io.Pipe()
 	objectStorageUploadsOpen.Inc()
 	uploadCtx, cancelFn := context.WithDeadline(ctx, deadline)
 
 	o := &S3Object{
-		uploader: newUploader(uploadCtx, pw),
-		s3Config: s3Config,
+		uploader:    newUploader(uploadCtx, pw),
+		credentials: s3Credentials,
+		config:      s3Config,
 	}
 
 	go o.trackUploadTime()
@@ -51,8 +53,8 @@ func NewS3Object(ctx context.Context, objectName string, s3Config config.S3Confi
 		}
 
 		// In case IAM profiles aren't being used, use the static credentials
-		if s3Config.AwsAccessKeyID != "" || s3Config.AwsSecretAccessKey != "" {
-			config.Credentials = credentials.NewStaticCredentials(s3Config.AwsAccessKeyID, s3Config.AwsSecretAccessKey, "")
+		if s3Credentials.AwsAccessKeyID != "" || s3Credentials.AwsSecretAccessKey != "" {
+			config.Credentials = credentials.NewStaticCredentials(s3Credentials.AwsAccessKeyID, s3Credentials.AwsSecretAccessKey, "")
 		}
 
 		if s3Config.Endpoint != "" {
@@ -117,7 +119,7 @@ func (o *S3Object) delete() {
 
 	svc := s3.New(o.session)
 	input := &s3.DeleteObjectInput{
-		Bucket: aws.String(o.s3Config.Bucket),
+		Bucket: aws.String(o.config.Bucket),
 		Key:    aws.String(o.objectName),
 	}
 

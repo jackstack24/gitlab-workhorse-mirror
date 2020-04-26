@@ -14,6 +14,7 @@ import (
 
 	"gitlab.com/gitlab-org/gitaly/proto/go/gitalypb"
 
+	"gitlab.com/gitlab-org/gitlab-workhorse/internal/config"
 	"gitlab.com/gitlab-org/gitlab-workhorse/internal/gitaly"
 	"gitlab.com/gitlab-org/gitlab-workhorse/internal/helper"
 	"gitlab.com/gitlab-org/gitlab-workhorse/internal/secret"
@@ -74,6 +75,11 @@ type MultipartUploadParams struct {
 	AbortURL string
 }
 
+type ObjectStorageParams struct {
+	Provider string
+	S3Config config.S3Config
+}
+
 type RemoteObject struct {
 	// GetURL is an S3 GetObject URL
 	GetURL string
@@ -95,6 +101,8 @@ type RemoteObject struct {
 	Timeout int
 	// MultipartUpload contains presigned URLs for S3 MultipartUpload
 	MultipartUpload *MultipartUploadParams
+	// Object storage config for Workhorse client
+	ObjectStorage *ObjectStorageParams
 }
 
 type Response struct {

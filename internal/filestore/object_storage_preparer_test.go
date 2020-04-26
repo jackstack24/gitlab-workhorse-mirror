@@ -11,36 +11,44 @@ import (
 )
 
 func TestPrepareWithS3Config(t *testing.T) {
-	os := make(map[string]*config.ObjectStorageConfig)
-	cfg := &config.ObjectStorageConfig{
-		Enabled:  true,
-		Provider: "AWS",
-		S3Config: config.S3Config{},
+	creds := config.S3Credentials{
+		AwsAccessKeyID:     "test-key",
+		AwsSecretAccessKey: "test-secret",
 	}
-	os["uploads"] = cfg
 
 	c := config.Config{
-		ObjectStorages: os,
+		ObjectStorageCredentials: &config.ObjectStorageCredentials{
+			Provider:      "AWS",
+			S3Credentials: creds,
+		},
 	}
 
-	r := &api.Response{}
-	p := filestore.NewObjectStoragePreparer("uploads", c)
+	r := &api.Response{
+		RemoteObject: api.RemoteObject{
+			UseWorkhorseClient: true,
+			ObjectStorage: &api.ObjectStorageParams{
+				Provider: "AWS",
+			},
+		},
+	}
+
+	p := filestore.NewObjectStoragePreparer(c)
 	opts, v, err := p.Prepare(r)
 
 	require.NoError(t, err)
-	require.True(t, opts.ObjectStorageConfig.Enabled)
 	require.True(t, opts.ObjectStorageConfig.IsAWS())
-	require.Equal(t, *cfg, opts.ObjectStorageConfig)
+	require.True(t, opts.UseWorkhorseClient)
+	require.Equal(t, creds, opts.ObjectStorageConfig.S3Credentials)
 	require.Equal(t, nil, v)
 }
 
 func TestPrepareWithNoConfig(t *testing.T) {
 	c := config.Config{}
 	r := &api.Response{}
-	p := filestore.NewObjectStoragePreparer("unknown", c)
+	p := filestore.NewObjectStoragePreparer(c)
 	opts, v, err := p.Prepare(r)
 
 	require.NoError(t, err)
-	require.False(t, opts.ObjectStorageConfig.Enabled)
+	require.False(t, opts.UseWorkhorseClient)
 	require.Equal(t, nil, v)
 }

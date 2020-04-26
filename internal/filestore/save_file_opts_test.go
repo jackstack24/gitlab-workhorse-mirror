@@ -170,8 +170,7 @@ func TestGetOptsDefaultTimeout(t *testing.T) {
 }
 
 func TestUseWorkhorseClientEnabled(t *testing.T) {
-	cfg := config.ObjectStorageConfig{
-		Enabled:  true,
+	cfg := filestore.ObjectStorageConfig{
 		Provider: "AWS",
 		S3Config: config.S3Config{
 			Bucket: "test-bucket",
@@ -183,7 +182,7 @@ func TestUseWorkhorseClientEnabled(t *testing.T) {
 		name                string
 		UseWorkhorseClient  bool
 		remoteTempObjectID  string
-		objectStorageConfig config.ObjectStorageConfig
+		objectStorageConfig filestore.ObjectStorageConfig
 		expected            bool
 	}{
 		{
@@ -217,8 +216,7 @@ func TestUseWorkhorseClientEnabled(t *testing.T) {
 			name:               "missing S3 bucket",
 			UseWorkhorseClient: true,
 			remoteTempObjectID: "test-object",
-			objectStorageConfig: config.ObjectStorageConfig{
-				Enabled:  true,
+			objectStorageConfig: filestore.ObjectStorageConfig{
 				Provider: "AWS",
 				S3Config: config.S3Config{},
 			},

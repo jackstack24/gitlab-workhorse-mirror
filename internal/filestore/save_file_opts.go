@@ -1,6 +1,7 @@
 package filestore
 
 import (
+	"strings"
 	"time"
 
 	"gitlab.com/gitlab-org/gitlab-workhorse/internal/api"
@@ -9,6 +10,13 @@ import (
 
 // DefaultObjectStoreTimeout is the timeout for ObjectStore upload operation
 const DefaultObjectStoreTimeout = 4 * time.Hour
+
+type ObjectStorageConfig struct {
+	Provider string
+
+	S3Credentials config.S3Credentials `toml:"s3"`
+	S3Config      config.S3Config
+}
 
 // SaveFileOpts represents all the options available for saving a file to object store
 type SaveFileOpts struct {
@@ -31,7 +39,7 @@ type SaveFileOpts struct {
 	// If UseWorkhorseClient is true, this is the temporary object name to store the file
 	RemoteTempObjectID string
 	// Workhorse object storage client (e.g. S3) parameters
-	ObjectStorageConfig config.ObjectStorageConfig
+	ObjectStorageConfig ObjectStorageConfig
 	// Deadline it the S3 operation deadline, the upload will be aborted if not completed in time
 	Deadline time.Time
 
@@ -85,6 +93,12 @@ func GetOpts(apiResponse *api.Response) *SaveFileOpts {
 		Deadline:           time.Now().Add(timeout),
 	}
 
+	objectStorageParams := apiResponse.RemoteObject.ObjectStorage
+	if opts.UseWorkhorseClient && objectStorageParams != nil {
+		opts.ObjectStorageConfig.Provider = objectStorageParams.Provider
+		opts.ObjectStorageConfig.S3Config = objectStorageParams.S3Config
+	}
+
 	// Backwards compatibility to ensure API servers that do not include the
 	// CustomPutHeaders flag will default to the original content type.
 	if !apiResponse.RemoteObject.CustomPutHeaders {
@@ -100,4 +114,12 @@ func GetOpts(apiResponse *api.Response) *SaveFileOpts {
 	}
 
 	return &opts
+}
+
+func (c *ObjectStorageConfig) IsAWS() bool {
+	return strings.EqualFold(c.Provider, "AWS") || strings.EqualFold(c.Provider, "S3")
+}
+
+func (c *ObjectStorageConfig) IsValid() bool {
+	return c.S3Config.Bucket != "" && c.S3Config.Region != ""
 }

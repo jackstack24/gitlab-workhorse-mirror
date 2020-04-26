@@ -31,23 +31,23 @@ func (l *object) Verify(fh *filestore.FileHandler) error {
 }
 
 type uploadPreparer struct {
-	objectStorageConfig config.ObjectStorageConfig
+	credentials config.ObjectStorageCredentials
 }
 
 func NewLfsUploadPreparer(c config.Config) filestore.UploadPreparer {
-	cfg, err := c.FindObjectStorageConfig("lfs")
+	creds := c.ObjectStorageCredentials
 
-	if err != nil {
-		cfg = &config.ObjectStorageConfig{Enabled: false}
+	if creds == nil {
+		creds = &config.ObjectStorageCredentials{}
 	}
 
-	return &uploadPreparer{objectStorageConfig: *cfg}
+	return &uploadPreparer{credentials: *creds}
 }
 
 func (l *uploadPreparer) Prepare(a *api.Response) (*filestore.SaveFileOpts, filestore.UploadVerifier, error) {
 	opts := filestore.GetOpts(a)
 	opts.TempFilePrefix = a.LfsOid
-	opts.ObjectStorageConfig = l.objectStorageConfig
+	opts.ObjectStorageConfig.S3Credentials = l.credentials.S3Credentials
 
 	return opts, &object{oid: a.LfsOid, size: a.LfsSize}, nil
 }
