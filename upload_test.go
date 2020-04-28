@@ -19,7 +19,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"gitlab.com/gitlab-org/gitlab-workhorse/internal/api"
-	"gitlab.com/gitlab-org/gitlab-workhorse/internal/filestore"
 	"gitlab.com/gitlab-org/gitlab-workhorse/internal/secret"
 	"gitlab.com/gitlab-org/gitlab-workhorse/internal/testhelper"
 	"gitlab.com/gitlab-org/gitlab-workhorse/internal/upload"
@@ -144,10 +143,10 @@ func TestAcceleratedUpload(t *testing.T) {
 						t.Fatalf("Unexpected rewritten_fields value: %v", rewrittenFields)
 					}
 
-					token, jwtErr := jwt.ParseWithClaims(r.PostFormValue("file.gitlab-workhorse-upload"), &filestore.UploadClaims{}, testhelper.ParseJWT)
+					token, jwtErr := jwt.ParseWithClaims(r.PostFormValue("file.gitlab-workhorse-upload"), &testhelper.UploadClaims{}, testhelper.ParseJWT)
 					require.NoError(t, jwtErr)
 
-					uploadFields := token.Claims.(*filestore.UploadClaims).Upload
+					uploadFields := token.Claims.(*testhelper.UploadClaims).Upload
 					require.Contains(t, uploadFields, "name")
 					require.Contains(t, uploadFields, "path")
 					require.Contains(t, uploadFields, "remote_url")

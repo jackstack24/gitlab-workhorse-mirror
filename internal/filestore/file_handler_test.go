@@ -265,10 +265,10 @@ func TestSaveFile(t *testing.T) {
 
 			checkFileHandlerWithFields(t, fh, fields, "file", spec.remote == notRemote)
 
-			token, jwtErr := jwt.ParseWithClaims(fields["file.gitlab-workhorse-upload"], &filestore.UploadClaims{}, testhelper.ParseJWT)
+			token, jwtErr := jwt.ParseWithClaims(fields["file.gitlab-workhorse-upload"], &testhelper.UploadClaims{}, testhelper.ParseJWT)
 			require.NoError(t, jwtErr)
 
-			uploadFields := token.Claims.(*filestore.UploadClaims).Upload
+			uploadFields := token.Claims.(*testhelper.UploadClaims).Upload
 
 			checkFileHandlerWithFields(t, fh, uploadFields, "", spec.remote == notRemote)
 		})

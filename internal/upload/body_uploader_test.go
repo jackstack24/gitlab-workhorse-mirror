@@ -127,10 +127,10 @@ func echoProxy(t *testing.T, expectedBodyLength int) http.Handler {
 			t.Fatalf("Unexpected rewritten_fields value: %v", rewrittenFields)
 		}
 
-		token, jwtErr := jwt.ParseWithClaims(r.PostFormValue("file.gitlab-workhorse-upload"), &filestore.UploadClaims{}, testhelper.ParseJWT)
+		token, jwtErr := jwt.ParseWithClaims(r.PostFormValue("file.gitlab-workhorse-upload"), &testhelper.UploadClaims{}, testhelper.ParseJWT)
 		require.NoError(jwtErr, "Wrong signed upload fields")
 
-		uploadFields := token.Claims.(*filestore.UploadClaims).Upload
+		uploadFields := token.Claims.(*testhelper.UploadClaims).Upload
 		require.Contains(uploadFields, "name")
 		require.Contains(uploadFields, "path")
 		require.Contains(uploadFields, "remote_url")
